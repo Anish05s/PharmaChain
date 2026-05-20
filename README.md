@@ -390,7 +390,7 @@ Visit your Vercel URL and test end-to-end:
 
 ## 👨‍💻 Builder
 
-Built by a **first-year B.Tech CS student at UEM Kolkata (Class of 2029)** as a hackathon MVP and internship portfolio project.
+Built by a **first-year B.Tech CS student**.
 
 ---
 
