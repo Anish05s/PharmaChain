@@ -1,0 +1,130 @@
+"""Full reset + restore default test orgs and logins.
+
+Run from backend folder:
+  python scripts/reset_and_seed.py
+
+Logins (unchanged):
+  manufacturer@pharmachain.com  / PharmaChain2026!  — Ravi Kumar
+  supplier@pharmachain.com    / PharmaChain2026!  — Priya Sharma
+  hospital@pharmachain.com    / PharmaChain2026!  — Dr. Anand Mehta
+"""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from sqlalchemy import text
+from database import engine, SessionLocal
+from models import Manufacturer, Supplier, Consumer, User
+from auth.utils import hash_password
+
+TABLES = [
+    "handoff_records",
+    "ai_flags",
+    "shipments",
+    "medicine_batches",
+    "approval_logs",
+    "stock_levels",
+    "restock_requests",
+    "notifications",
+    "users",
+    "manufacturers",
+    "suppliers",
+    "consumers",
+    "disruption_events",
+]
+
+ENTITIES = {
+    "manufacturer": Manufacturer(
+        id="mfg-001",
+        name="AzMed Pharma Ltd",
+        license_number="AZM-LIC-001",
+        country="India",
+    ),
+    "supplier": Supplier(
+        id="sup-001",
+        name="NorthEast Medical Supply",
+        warehouse_location="Guwahati",
+        country="India",
+    ),
+    "consumer": Consumer(
+        id="con-001",
+        name="Civil Hospital Guwahati",
+        type="hospital",
+        location="Guwahati",
+        country="India",
+    ),
+}
+
+ACCOUNTS = [
+    {
+        "email": "manufacturer@pharmachain.com",
+        "password": "PharmaChain2026!",
+        "full_name": "Ravi Kumar",
+        "role": "manufacturer",
+        "sub_role": "manufacturer_admin",
+        "entity_id": "mfg-001",
+    },
+    {
+        "email": "supplier@pharmachain.com",
+        "password": "PharmaChain2026!",
+        "full_name": "Priya Sharma",
+        "role": "supplier",
+        "sub_role": "supplier_manager",
+        "entity_id": "sup-001",
+    },
+    {
+        "email": "hospital@pharmachain.com",
+        "password": "PharmaChain2026!",
+        "full_name": "Dr. Anand Mehta",
+        "role": "consumer",
+        "sub_role": "hospital_officer",
+        "entity_id": "con-001",
+    },
+]
+
+
+def wipe():
+    with engine.connect() as conn:
+        for table in TABLES:
+            conn.execute(text(f'TRUNCATE TABLE "{table}" RESTART IDENTITY CASCADE'))
+        conn.commit()
+
+
+def seed():
+    db = SessionLocal()
+    try:
+        db.add(ENTITIES["manufacturer"])
+        db.add(ENTITIES["supplier"])
+        db.add(ENTITIES["consumer"])
+        db.flush()
+
+        for acc in ACCOUNTS:
+            db.add(
+                User(
+                    email=acc["email"],
+                    hashed_password=hash_password(acc["password"]),
+                    full_name=acc["full_name"],
+                    role=acc["role"],
+                    sub_role=acc["sub_role"],
+                    entity_id=acc["entity_id"],
+                )
+            )
+        db.commit()
+    finally:
+        db.close()
+
+
+def main():
+    print("Wiping database…")
+    wipe()
+    print("Seeding orgs + users…")
+    seed()
+    print("Done. Fresh DB with same logins:")
+    for acc in ACCOUNTS:
+        print(f"  {acc['email']}  ({acc['full_name']})  password: {acc['password']}")
+    print("\nEntity IDs: mfg-001 | sup-001 | con-001")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,251 @@
+import secrets
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from database import get_db
+from config import settings
+from models import Manufacturer, MedicineBatch, ApprovalLog, Shipment, Supplier
+from auth.dependencies import require_manufacturer
+from models import User
+from manufacturer.schemas import (
+    BatchCreateRequest,
+    BatchResponse,
+    BatchListItem,
+    ShipmentCreateRequest,
+    ShipmentResponse,
+)
+from qr_service.generator import generate_shipment_qr
+from manufacturer.batch_inventory import (
+    dispatched_units_for_batch,
+    remaining_units_for_batch,
+)
+from shared.schemas import EmergencyNotificationItem
+from shared.emergency_notifications import (
+    notifications_for_manufacturer,
+    to_notification_items,
+)
+
+router = APIRouter(prefix="/manufacturer", tags=["Manufacturer"])
+
+
+def _get_manufacturer(db: Session, entity_id: str) -> Manufacturer:
+    manufacturer = db.query(Manufacturer).filter(Manufacturer.id == entity_id).first()
+    if not manufacturer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Manufacturer record not found for this user",
+        )
+    return manufacturer
+
+
+def _write_approval_log(
+    db: Session,
+    user: User,
+    action_type: str,
+    entity_id: str,
+    entity_type: str,
+    notes: str,
+) -> ApprovalLog:
+    log = ApprovalLog(
+        actor_role=user.sub_role,
+        actor_name=user.full_name or user.email,
+        actor_id=user.id,
+        action_type=action_type,
+        entity_id=entity_id,
+        entity_type=entity_type,
+        notes=notes,
+    )
+    db.add(log)
+    return log
+
+
+@router.get("/batches", response_model=List[BatchListItem])
+def list_batches(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_manufacturer),
+):
+    manufacturer = _get_manufacturer(db, current_user.entity_id)
+    batches = (
+        db.query(MedicineBatch)
+        .filter(MedicineBatch.manufacturer_id == manufacturer.id)
+        .order_by(MedicineBatch.created_at.desc())
+        .all()
+    )
+    return [
+        BatchListItem(
+            id=batch.id,
+            name=batch.name,
+            batch_number=batch.batch_number,
+            quantity=batch.quantity,
+            quantity_dispatched=dispatched_units_for_batch(db, batch, manufacturer.id),
+            quantity_remaining=remaining_units_for_batch(db, batch, manufacturer.id),
+            expiry_date=batch.expiry_date,
+            manufacturing_date=batch.manufacturing_date,
+            storage_temp_declared=batch.storage_temp_declared,
+            created_at=batch.created_at,
+        )
+        for batch in batches
+    ]
+
+
+@router.post("/batches", response_model=BatchResponse, status_code=status.HTTP_201_CREATED)
+def create_batch(
+    data: BatchCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_manufacturer),
+):
+    manufacturer = _get_manufacturer(db, current_user.entity_id)
+
+    existing = (
+        db.query(MedicineBatch)
+        .filter(MedicineBatch.batch_number == data.batch_number)
+        .first()
+    )
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Batch number already exists",
+        )
+
+    if data.expiry_date <= data.manufacturing_date:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="expiry_date must be after manufacturing_date",
+        )
+
+    batch = MedicineBatch(
+        manufacturer_id=manufacturer.id,
+        name=data.name,
+        batch_number=data.batch_number,
+        quantity=data.quantity,
+        expiry_date=data.expiry_date,
+        manufacturing_date=data.manufacturing_date,
+        storage_temp_declared=data.storage_temp_declared,
+    )
+    db.add(batch)
+    db.flush()
+
+    approval_log = _write_approval_log(
+        db,
+        current_user,
+        action_type="batch_creation",
+        entity_id=batch.id,
+        entity_type="batch",
+        notes=f"Batch {data.batch_number} created ({data.quantity} units)",
+    )
+    db.commit()
+    db.refresh(batch)
+    db.refresh(approval_log)
+
+    return BatchResponse(
+        id=batch.id,
+        manufacturer_id=batch.manufacturer_id,
+        name=batch.name,
+        batch_number=batch.batch_number,
+        quantity=batch.quantity,
+        expiry_date=batch.expiry_date,
+        manufacturing_date=batch.manufacturing_date,
+        storage_temp_declared=batch.storage_temp_declared,
+        approval_log_id=approval_log.id,
+    )
+
+
+@router.post("/shipments", response_model=ShipmentResponse, status_code=status.HTTP_201_CREATED)
+def create_shipment(
+    data: ShipmentCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_manufacturer),
+):
+    manufacturer = _get_manufacturer(db, current_user.entity_id)
+
+    batch = (
+        db.query(MedicineBatch)
+        .filter(
+            MedicineBatch.id == data.batch_id,
+            MedicineBatch.manufacturer_id == manufacturer.id,
+        )
+        .first()
+    )
+    if not batch:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Batch not found or does not belong to your manufacturer",
+        )
+
+    supplier = db.query(Supplier).filter(Supplier.id == data.to_entity_id).first()
+    if not supplier:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Supplier not found",
+        )
+
+    remaining = remaining_units_for_batch(db, batch, manufacturer.id)
+    if remaining <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No units remaining to dispatch for this batch",
+        )
+    if data.quantity > remaining:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot dispatch {data.quantity} units; only {remaining} remaining",
+        )
+
+    shipment_code = f"SHP-{batch.batch_number}-{secrets.token_hex(3).upper()}"
+    while db.query(Shipment).filter(Shipment.shipment_code == shipment_code).first():
+        shipment_code = f"SHP-{batch.batch_number}-{secrets.token_hex(3).upper()}"
+
+    shipment = Shipment(
+        batch_id=batch.id,
+        from_entity_id=manufacturer.id,
+        to_entity_id=supplier.id,
+        shipment_code=shipment_code,
+        quantity_dispatched=data.quantity,
+        status="pending",
+    )
+    db.add(shipment)
+    db.flush()
+
+    qr_code_url = generate_shipment_qr(shipment.id)
+    shipment.qr_code_url = qr_code_url
+
+    approval_log = _write_approval_log(
+        db,
+        current_user,
+        action_type="shipment_dispatch",
+        entity_id=shipment.id,
+        entity_type="shipment",
+        notes=(
+            f"Dispatched {data.quantity} units of {batch.name} ({batch.batch_number}) "
+            f"to {supplier.name} · code {shipment_code} · "
+            f"{remaining - data.quantity} units remaining in batch"
+        ),
+    )
+    db.commit()
+    db.refresh(shipment)
+    db.refresh(approval_log)
+
+    verification_url = f"{settings.PUBLIC_APP_URL}/shared/shipment/{shipment.id}"
+
+    return ShipmentResponse(
+        id=shipment.id,
+        batch_id=shipment.batch_id,
+        from_entity_id=shipment.from_entity_id,
+        to_entity_id=shipment.to_entity_id,
+        shipment_code=shipment.shipment_code,
+        quantity_dispatched=shipment.quantity_dispatched,
+        qr_code_url=f"{settings.API_BASE_URL}{qr_code_url}",
+        verification_url=verification_url,
+        status=shipment.status,
+        approval_log_id=approval_log.id,
+    )
+
+
+@router.get("/emergency-notifications", response_model=List[EmergencyNotificationItem])
+def list_emergency_notifications(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_manufacturer),
+):
+    manufacturer = _get_manufacturer(db, current_user.entity_id)
+    requests = notifications_for_manufacturer(db, manufacturer.id)
+    return to_notification_items(db, requests)

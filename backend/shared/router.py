@@ -1,0 +1,91 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from database import get_db
+from config import settings
+from models import (
+    ApprovalLog,
+    Shipment,
+    MedicineBatch,
+    HandoffRecord,
+    Manufacturer,
+    Supplier,
+    Consumer,
+)
+from shared.schemas import ApprovalLogItem, PublicShipmentResponse, HandoffPublicItem
+
+router = APIRouter(prefix="/shared", tags=["Shared"])
+
+
+def _entity_name(db: Session, entity_id: Optional[str]) -> str:
+    if not entity_id:
+        return "Unknown"
+    for model in (Manufacturer, Supplier, Consumer):
+        row = db.query(model).filter(model.id == entity_id).first()
+        if row:
+            return row.name
+    return entity_id
+
+
+def _full_qr_url(qr_path: Optional[str]) -> Optional[str]:
+    if not qr_path:
+        return None
+    if qr_path.startswith("http"):
+        return qr_path
+    return f"{settings.API_BASE_URL}{qr_path}"
+
+
+@router.get("/shipment/{shipment_id}", response_model=PublicShipmentResponse)
+def get_public_shipment(shipment_id: str, db: Session = Depends(get_db)):
+    shipment = db.query(Shipment).filter(Shipment.id == shipment_id).first()
+    if not shipment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Shipment not found",
+        )
+
+    batch = db.query(MedicineBatch).filter(MedicineBatch.id == shipment.batch_id).first()
+    if not batch:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Batch not found for this shipment",
+        )
+
+    handoffs = (
+        db.query(HandoffRecord)
+        .filter(HandoffRecord.shipment_id == shipment.id)
+        .order_by(HandoffRecord.submitted_at.asc())
+        .all()
+    )
+
+    logs = (
+        db.query(ApprovalLog)
+        .filter(
+            ApprovalLog.entity_id == shipment.id,
+            ApprovalLog.entity_type == "shipment",
+        )
+        .order_by(ApprovalLog.created_at.asc())
+        .all()
+    )
+
+    shipment_qty = (
+        shipment.quantity_dispatched
+        if shipment.quantity_dispatched is not None
+        else batch.quantity
+    )
+
+    return PublicShipmentResponse(
+        id=shipment.id,
+        shipment_code=shipment.shipment_code,
+        status=shipment.status,
+        created_at=shipment.created_at,
+        batch_name=batch.name,
+        batch_number=batch.batch_number,
+        medicine_quantity=shipment_qty,
+        expiry_date=batch.expiry_date,
+        from_entity_name=_entity_name(db, shipment.from_entity_id),
+        to_entity_name=_entity_name(db, shipment.to_entity_id),
+        qr_code_url=_full_qr_url(shipment.qr_code_url),
+        blockchain_hash=shipment.blockchain_hash,
+        handoffs=[HandoffPublicItem.model_validate(h) for h in handoffs],
+        approval_logs=[ApprovalLogItem.model_validate(log) for log in logs],
+    )
