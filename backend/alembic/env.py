@@ -15,8 +15,9 @@ config = context.config
 
 # ── Override sqlalchemy.url from environment variable ─────────────────────────
 # This ensures Render/production DATABASE_URL is used instead of alembic.ini
+# Note: configparser treats % as interpolation — must escape with %%
 db_url = os.environ.get("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
-config.set_main_option("sqlalchemy.url", db_url)
+config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))
 
 
 # Interpret the config file for Python logging.
