@@ -30,6 +30,7 @@ MarkupSafe==3.0.3
 multidict==6.7.1
 parsimonious==0.10.0
 passlib==1.7.4
+bcrypt==4.2.1
 pillow==12.2.0
 propcache==0.5.2
 psycopg2-binary==2.9.12
