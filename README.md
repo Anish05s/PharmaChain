@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # 🔗 PharmaChain
 
 > **AI + Blockchain Pharmaceutical Supply Chain Verification & Crisis Intelligence Platform**
@@ -406,4 +405,3 @@ MIT License — feel free to use, modify, and distribute.
 =======
 # PharmaChain
 PharmaChain solves counterfeit medicines, shipment fraud, and crisis response failures in pharmaceutical supply chains — especially in emerging markets, disaster zones, and NGO healthcare networks where IoT hardware is unavailable.
->>>>>>> f32fb4b26f107cfca2e9617bd15e36ab6234b5da
