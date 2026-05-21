@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 QUANTITY_DEVIATION_THRESHOLD = 0.15
 TEMP_TOLERANCE_CELSIUS = 5.0
-FLAG_RISK_THRESHOLD = 21
+FLAG_RISK_THRESHOLD = 10
 
 
 @dataclass
@@ -87,7 +87,16 @@ def run_verification(
             "supplier": sup_qty,
             "deviation_pct": round(sup_dev * 100, 1),
         })
-        risk += 40 if sup_dev <= 0.30 else 60
+        risk += 30
+    elif sup_dev > 0.0:
+        rules.append("LOW_QUANTITY_DEVIATION_MFG_SUPPLIER")
+        mismatches.append({
+            "field": "quantity",
+            "manufacturer": mfg_qty,
+            "supplier": sup_qty,
+            "deviation_pct": round(sup_dev * 100, 1),
+        })
+        risk += 10
 
     # Supplier vs hospital quantity
     hos_qty = hospital.quantity or 0
@@ -101,7 +110,16 @@ def run_verification(
             "hospital": hos_qty,
             "deviation_pct": round(hos_dev * 100, 1),
         })
-        risk += 40 if hos_dev <= 0.30 else 60
+        risk += 30
+    elif hos_dev > 0.0:
+        rules.append("LOW_QUANTITY_DEVIATION_SUPPLIER_HOSPITAL")
+        mismatches.append({
+            "field": "quantity",
+            "supplier": sup_expected_for_hospital,
+            "hospital": hos_qty,
+            "deviation_pct": round(hos_dev * 100, 1),
+        })
+        risk += 10
 
     # Expiry chain
     mfg_exp = manufacturer.expiry
@@ -114,7 +132,7 @@ def run_verification(
             "manufacturer": mfg_exp.isoformat(),
             "supplier": sup_exp.isoformat(),
         })
-        risk += 50
+        risk += 40
     if sup_exp and hos_exp and not _same_expiry(sup_exp, hos_exp):
         rules.append("EXPIRY_MISMATCH_SUPPLIER_HOSPITAL")
         mismatches.append({
@@ -122,7 +140,7 @@ def run_verification(
             "supplier": sup_exp.isoformat(),
             "hospital": hos_exp.isoformat(),
         })
-        risk += 50
+        risk += 40
 
     # Temperature declarations
     mfg_temp = manufacturer.temp
@@ -138,7 +156,7 @@ def run_verification(
                 "supplier": sup_temp,
                 "difference_c": round(diff, 1),
             })
-            risk += 25
+            risk += 15
     if sup_temp is not None and hos_temp is not None:
         diff = abs(sup_temp - hos_temp)
         if diff > TEMP_TOLERANCE_CELSIUS:
@@ -149,7 +167,7 @@ def run_verification(
                 "hospital": hos_temp,
                 "difference_c": round(diff, 1),
             })
-            risk += 25
+            risk += 15
 
     risk = min(100.0, risk)
     status = "FLAGGED" if risk >= FLAG_RISK_THRESHOLD else "VERIFIED"

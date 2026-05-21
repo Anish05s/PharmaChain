@@ -354,7 +354,11 @@ def manufacturer_chain_view(
         summary = "Full chain verified. Batch {} — {:,} units. All {} leg(s) cleared.".format(
             batch.batch_number, batch.quantity or 0, len(legs))
     elif overall_status == "FLAGGED":
-        summary = "Chain discrepancy detected. Risk {:.0f}/100. Review legs below.".format(risk)
+        flag = db.query(AIFlag).join(Shipment).filter(Shipment.batch_id == batch_id).order_by(AIFlag.created_at.desc()).first()
+        if flag and flag.explanation:
+            summary = flag.explanation
+        else:
+            summary = "Chain discrepancy detected. Risk {:.0f}/100. Review legs below.".format(risk)
     else:
         summary = "Pending — waiting for handoff confirmations from downstream parties."
 
@@ -424,7 +428,11 @@ def supplier_chain_view(
         summary = "Both legs verified. Received from {}: {:,} units. Downstream confirmed.".format(
             mfr_name, incoming.quantity_dispatched or 0)
     elif overall_status == "FLAGGED":
-        summary = "Discrepancy detected. Risk {:.0f}/100. Check legs below.".format(risk)
+        flag = db.query(AIFlag).filter(AIFlag.shipment_id == incoming.id).order_by(AIFlag.created_at.desc()).first()
+        if flag and flag.explanation:
+            summary = flag.explanation
+        else:
+            summary = "Shipment flagged. Risk {:.0f}/100. Discrepancy logged.".format(risk)
     else:
         summary = "Awaiting downstream confirmation from hospital."
 

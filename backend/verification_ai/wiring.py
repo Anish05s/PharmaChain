@@ -62,6 +62,35 @@ def _load_party_reports(
             temp=h.temp_reported,
         )
 
+    # If supplier handoff is missing (because it's attached to the previous shipment)
+    if "supplier" not in reports:
+        shipment = db.query(Shipment).filter(Shipment.id == shipment_id).first()
+        if shipment:
+            sup_incoming = (
+                db.query(Shipment)
+                .filter(
+                    Shipment.batch_id == shipment.batch_id,
+                    Shipment.to_entity_id == shipment.from_entity_id
+                )
+                .first()
+            )
+            if sup_incoming:
+                sup_handoff = (
+                    db.query(HandoffRecord)
+                    .filter(
+                        HandoffRecord.shipment_id == sup_incoming.id,
+                        HandoffRecord.stage == "supplier_receipt"
+                    )
+                    .first()
+                )
+                if sup_handoff:
+                    reports["supplier"] = PartyReport(
+                        party="supplier",
+                        quantity=sup_handoff.quantity_reported,
+                        expiry=sup_handoff.expiry_reported if isinstance(sup_handoff.expiry_reported, datetime) else None,
+                        temp=sup_handoff.temp_reported,
+                    )
+
     # Manufacturer report: if no explicit manufacturer handoff, use batch data
     if "manufacturer" not in reports:
         reports["manufacturer"] = PartyReport(
