@@ -19,6 +19,19 @@ def _resolve_sub_role(data: RegisterRequest) -> str:
         raise HTTPException(status_code=400, detail="Invalid role")
     return sub
 
+def _get_org_name(db: Session, role: str, entity_id: str) -> str | None:
+    if not entity_id:
+        return None
+    if role == "manufacturer":
+        ent = db.query(Manufacturer).filter(Manufacturer.id == entity_id).first()
+    elif role == "supplier":
+        ent = db.query(Supplier).filter(Supplier.id == entity_id).first()
+    elif role == "consumer":
+        ent = db.query(Consumer).filter(Consumer.id == entity_id).first()
+    else:
+        return None
+    return ent.name if ent else None
+
 
 def _create_entity(db: Session, data: RegisterRequest) -> str:
     entity_id = next_entity_id(db, data.role)
@@ -96,7 +109,8 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
         role=user.role,
         sub_role=user.sub_role,
         full_name=user.full_name,
-        entity_id=user.entity_id
+        entity_id=user.entity_id,
+        org_name=_get_org_name(db, user.role, user.entity_id)
     )
 
 @router.post("/login", response_model=TokenResponse)
@@ -116,5 +130,6 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
         role=user.role,
         sub_role=user.sub_role,
         full_name=user.full_name,
-        entity_id=user.entity_id
+        entity_id=user.entity_id,
+        org_name=_get_org_name(db, user.role, user.entity_id)
     )

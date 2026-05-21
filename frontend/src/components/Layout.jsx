@@ -131,6 +131,8 @@ export default function Layout({ title, children, actions }) {
           >{initial}</div>
           <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-base)' }}>{user?.full_name || user?.email}</p>
           <p className="text-xs mt-0.5 capitalize" style={{ color: 'var(--text-light)' }}>{user?.sub_role?.replace(/_/g, ' ')}</p>
+          {user?.org_name && <p className="text-xs mt-2 truncate font-semibold" style={{ color: 'var(--text-base)' }}>{user.org_name}</p>}
+          {user?.entity_id && <p className="text-[10px] mt-0.5 truncate uppercase" style={{ color: 'var(--text-muted)' }}>ID: {user.entity_id}</p>}
         </div>
 
         {/* Nav */}

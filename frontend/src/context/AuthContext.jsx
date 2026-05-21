@@ -15,6 +15,7 @@ export function AuthProvider({ children }) {
       sub_role: data.sub_role,
       full_name: data.full_name,
       entity_id: data.entity_id,
+      org_name: data.org_name,
     }
     localStorage.setItem('user', JSON.stringify(profile))
     setUser(profile)

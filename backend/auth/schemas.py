@@ -35,3 +35,4 @@ class TokenResponse(BaseModel):
     sub_role: str
     full_name: str
     entity_id: Optional[str] = None
+    org_name: Optional[str] = None
