@@ -165,7 +165,7 @@ export default function Login() {
           {/* Left side */}
           <div className="lg:w-1/3 flex flex-col">
             <div className="flex items-center gap-3 mb-6">
-              <img src="/logo.png" alt="PharmaChain" className="h-10 w-auto object-contain filter brightness-0 invert" />
+              <img src="/logo.png" alt="PharmaChain" className="h-10 w-auto object-contain" />
               <span className="text-2xl font-bold tracking-tight">PharmaChain</span>
             </div>
             <p className="text-sm text-slate-300 leading-relaxed mb-8 max-w-sm">
