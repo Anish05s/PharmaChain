@@ -49,7 +49,7 @@ export default function Login() {
           <div className="animate-slide-up">
             {/* New Logo style */}
             <div className="flex items-center gap-3 mb-10">
-              <img src="/logo.png" alt="PharmaChain" className="h-14 w-auto object-contain" />
+              <img src="/logo.png" alt="PharmaChain" className="h-[84px] w-auto object-contain" />
               <h1 className="text-4xl font-black" style={{ color: 'var(--text-base)' }}>
                 Pharma<span className="gradient-text">Chain</span>
               </h1>
@@ -83,7 +83,7 @@ export default function Login() {
           <div className="w-full max-w-md">
             {/* Mobile logo */}
             <div className="lg:hidden text-center mb-8 flex flex-col items-center">
-              <img src="/logo.png" alt="PharmaChain" className="h-12 w-auto object-contain mb-3" />
+              <img src="/logo.png" alt="PharmaChain" className="h-[72px] w-auto object-contain mb-3" />
               <h1 className="text-2xl font-bold" style={{ color: 'var(--text-base)' }}>PharmaChain</h1>
             </div>
 
@@ -165,7 +165,7 @@ export default function Login() {
           {/* Left side */}
           <div className="lg:w-1/3 flex flex-col">
             <div className="flex items-center gap-3 mb-6">
-              <img src="/logo.png" alt="PharmaChain" className="h-10 w-auto object-contain" />
+              <img src="/logo.png" alt="PharmaChain" className="h-[60px] w-auto object-contain" />
               <span className="text-2xl font-bold tracking-tight">PharmaChain</span>
             </div>
             <p className="text-sm text-slate-300 leading-relaxed mb-8 max-w-sm">
