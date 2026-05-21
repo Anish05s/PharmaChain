@@ -48,7 +48,7 @@ function LegCard({ leg }) {
   const qtyDetail =
     leg.qty_status === 'MATCH'
       ? `${leg.dispatched_qty?.toLocaleString()} dispatched = ${leg.received_qty?.toLocaleString()} received`
-      : leg.qty_status === 'DEVIATION'
+      : (leg.qty_status === 'DEVIATION' || leg.qty_status === 'LOW_DEVIATION')
         ? `${leg.dispatched_qty?.toLocaleString()} dispatched ≠ ${leg.received_qty?.toLocaleString()} received (${leg.qty_deviation_pct}% deviation)`
         : 'Awaiting confirmation'
 

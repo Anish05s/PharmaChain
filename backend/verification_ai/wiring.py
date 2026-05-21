@@ -160,24 +160,25 @@ def trigger_verification_and_blockchain(
 
     # Blockchain actions
     bc_svc = get_blockchain_service()
+    
+    # Always record handoff on-chain so the tx hash is saved to the DB
+    background_tasks.add_task(
+        bg_record_handoff_and_store,
+        shipment_id,
+        result.status,
+        result.risk_score,
+        SessionLocal,
+        Shipment,
+        shipment_id,
+        "blockchain_hash",
+    )
+    logger.info("Queued blockchain handoff record for shipment %s", shipment_id)
+
     if result.status == "FLAGGED":
         background_tasks.add_task(
             bc_svc.flag_shipment, shipment_id, result.explanation[:200]
         )
         logger.info("Queued blockchain flag for shipment %s", shipment_id)
-    else:
-        # VERIFIED or PENDING-with-data → record handoff on-chain
-        background_tasks.add_task(
-            bg_record_handoff_and_store,
-            shipment_id,
-            result.status,
-            result.risk_score,
-            SessionLocal,
-            Shipment,
-            shipment_id,
-            "blockchain_hash",
-        )
-        logger.info("Queued blockchain handoff record for shipment %s", shipment_id)
 
     return {
         "status": result.status,
