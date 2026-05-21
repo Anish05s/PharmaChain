@@ -41,9 +41,9 @@ PharmaChain is a **three-party attestation system** for pharmaceutical supply ch
         │                  │                   │
     ┌───▼────┐      ┌──────▼──────┐    ┌───────▼─────┐
     │  Auth  │      │  Hybrid AI  │    │  Blockchain │
-    │  + JWT │      │  (4 modules)│    │  Sepolia    │
+    │  + JWT │      │ (4 modules) │    │  Sepolia    │
     └────────┘      │             │    └─────────────┘
-                    │ 1. Verif AI │
+                    │ 1. Verify AI│
                     │ 2. Stock AI │
                     │ 3. Crisis AI│
                     │ 4. Trust Eng│
