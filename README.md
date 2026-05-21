@@ -23,12 +23,12 @@ PharmaChain is a **three-party attestation system** for pharmaceutical supply ch
 ## 🏗️ Architecture
 
 ```
-┌──────────────────────────────────────────────────────┐
-│              THREE PARTY PORTALS (React)              │
-├──────────────────────────────────────────────────────┤
-│  Manufacturer    │    Supplier      │   Hospital/NGO  │
+┌────────────────────────────────────────────────────────┐
+│               THREE PARTY PORTALS (React)              │
+├────────────────────────────────────────────────────────┤
+│  Manufacturer    │    Supplier      │   Hospital/NGO   │
 │  (batch create)  │  (verification)  │ (receipt confirm)│
-└────────┬─────────────────┬──────────────────┬────────┘
+└────────┬─────────────────┬──────────────────┬──────────┘
          └─────────────────┼──────────────────┘
                            │
                 ┌──────────▼──────────┐
@@ -39,15 +39,15 @@ PharmaChain is a **three-party attestation system** for pharmaceutical supply ch
                            │
         ┌──────────────────┼───────────────────┐
         │                  │                   │
-    ┌───▼────┐      ┌──────▼──────┐    ┌───────▼─────┐
-    │  Auth  │      │  Hybrid AI  │    │  Blockchain │
-    │  + JWT │      │ (4 modules) │    │  Sepolia    │
-    └────────┘      │             │    └─────────────┘
-                    │ 1. Verify AI│
-                    │ 2. Stock AI │
-                    │ 3. Crisis AI│
-                    │ 4. Trust Eng│
-                    └─────────────┘
+    ┌───▼────┐      ┌──────▼───────┐   ┌───────▼─────┐
+    │  Auth  │      │  Hybrid AI   │   │  Blockchain │
+    │ + JWT  │      │ (4 modules)  │   │  Sepolia    │
+    └────────┘      │              │   └─────────────┘
+                    │ 1. Verify AI │
+                    │ 2. Stock AI  │
+                    │ 3. Crisis AI │
+                    │ 4. Trust Eng │
+                    └──────────────┘
 ```
 
 ---
@@ -139,11 +139,11 @@ python scripts/reset_and_seed.py
 
 This creates three demo accounts:
 
-| Email | Password | Role |
-|-------|----------|------|
+|              Email             |      Password      |        Role        |
+|--------------------------------|--------------------|--------------------|
 | `manufacturer@pharmachain.com` | `PharmaChain2026!` | Manufacturer Admin |
-| `supplier@pharmachain.com` | `PharmaChain2026!` | Supplier Manager |
-| `hospital@pharmachain.com` | `PharmaChain2026!` | Hospital Officer |
+|   `supplier@pharmachain.com`   | `PharmaChain2026!` |  Supplier Manager  |
+|   `hospital@pharmachain.com`   | `PharmaChain2026!` |  Hospital Officer  |
 
 ### 4. Start servers
 
