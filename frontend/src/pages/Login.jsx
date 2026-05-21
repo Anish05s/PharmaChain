@@ -106,6 +106,25 @@ export default function Login() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="mb-2">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Demo Quick Login</label>
+                  <select 
+                    className="w-full px-4 py-3 text-sm rounded-xl cursor-pointer transition-colors"
+                    style={{ background: '#f8fafc', border: '1px solid var(--border)', color: 'var(--text-base)' }}
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (!e.target.value) return;
+                      const [em, pw] = e.target.value.split(':');
+                      setEmail(em);
+                      setPassword(pw);
+                    }}
+                  >
+                    <option value="" disabled>Select a demo user to auto-fill...</option>
+                    <option value="admin@moonpharma.com:password">Manufacturer - Kailash Chandrasekhar (Moon Pharma)</option>
+                    <option value="admin@paulmedico.com:password">Supplier - Aditya Paul (Paul Medico)</option>
+                    <option value="admin@ethhospitals.com:password">Hospital - Dr. Madhumita Sen (ETH Hospitals)</option>
+                  </select>
+                </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Email</label>
                   <input
