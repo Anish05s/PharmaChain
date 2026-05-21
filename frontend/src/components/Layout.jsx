@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import EmergencyNotificationBar from './EmergencyNotificationBar'
@@ -21,6 +22,73 @@ const ROLE_GRADIENT = {
   manufacturer: 'linear-gradient(135deg,#0891b2,#3b82f6)',
   supplier:     'linear-gradient(135deg,#7c3aed,#6d28d9)',
   consumer:     'linear-gradient(135deg,#059669,#047857)',
+}
+
+function ProfileDropdown({ handleLogout }) {
+  const [open, setOpen] = useState(false)
+  const dropdownRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button 
+        type="button" 
+        onClick={() => setOpen(!open)}
+        className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+        style={{ background: '#ffffff', border: '1px solid var(--border)' }}
+        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-base)'}
+        onMouseLeave={e => e.currentTarget.style.background = '#ffffff'}
+      >
+        <svg className="w-5 h-5" style={{ color: 'var(--text-light)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg py-2 z-50 animate-slide-up" style={{ border: '1px solid var(--border)' }}>
+          <button 
+            type="button"
+            className="w-full text-left px-4 py-2 text-sm font-semibold transition-colors"
+            style={{ color: 'var(--text-base)' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-base)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            My Profile
+          </button>
+          
+          <div className="px-2 mt-1 pt-1" style={{ borderTop: '1px solid var(--border)' }}>
+            <button 
+              type="button"
+              onClick={handleLogout}
+              className="w-full text-left px-3 py-2 text-sm font-bold rounded-lg transition-all duration-300"
+              style={{ color: '#ef4444', background: 'transparent', border: '1px solid transparent' }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(239,68,68,0.06)'
+                e.currentTarget.style.border = '1px solid rgba(239,68,68,0.3)'
+                e.currentTarget.style.boxShadow = '0 0 12px rgba(239,68,68,0.15)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.border = '1px solid transparent'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Layout({ title, children, actions }) {
@@ -145,22 +213,7 @@ export default function Layout({ title, children, actions }) {
             {actions}
             {actions && <div className="h-6 w-px bg-slate-200"></div>}
             <NotificationBell />
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
-              style={{ color: 'var(--text-light)', border: '1px solid var(--border)' }}
-              onMouseEnter={e => {
-                e.currentTarget.style.color = '#ef4444';
-                e.currentTarget.style.background = 'rgba(239,68,68,0.05)';
-                e.currentTarget.style.borderColor = 'rgba(239,68,68,0.2)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.color = 'var(--text-light)';
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.borderColor = 'var(--border)';
-              }}
-            >Sign out</button>
+            <ProfileDropdown handleLogout={handleLogout} />
           </div>
         </header>
 
