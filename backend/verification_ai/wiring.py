@@ -93,9 +93,26 @@ def _load_party_reports(
 
     # Manufacturer report: if no explicit manufacturer handoff, use batch data
     if "manufacturer" not in reports:
+        mfg_qty = batch.quantity
+        shipment = db.query(Shipment).filter(Shipment.id == shipment_id).first()
+        if shipment:
+            if shipment.from_entity_id == batch.manufacturer_id:
+                mfg_qty = shipment.quantity_dispatched
+            else:
+                sup_incoming = (
+                    db.query(Shipment)
+                    .filter(
+                        Shipment.batch_id == shipment.batch_id,
+                        Shipment.to_entity_id == shipment.from_entity_id
+                    )
+                    .first()
+                )
+                if sup_incoming:
+                    mfg_qty = sup_incoming.quantity_dispatched
+
         reports["manufacturer"] = PartyReport(
             party="manufacturer",
-            quantity=batch.quantity,
+            quantity=mfg_qty,
             expiry=batch.expiry_date if isinstance(batch.expiry_date, datetime) else None,
             temp=batch.storage_temp_declared,
         )
