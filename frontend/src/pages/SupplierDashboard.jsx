@@ -53,8 +53,14 @@ function Field({ label, children }) {
   )
 }
 
-function Input({ ...props }) {
-  return <input className="w-full px-4 py-3 text-sm" {...props} />
+function Input({ className = '', ...props }) {
+  return (
+    <input 
+      className={`w-full px-4 py-3 text-sm ${className}`} 
+      style={{ background: '#ffffff', border: '1px solid var(--border-strong)', color: 'var(--text-base)', borderRadius: '0.75rem' }}
+      {...props} 
+    />
+  )
 }
 
 function Select({ children, ...props }) {
