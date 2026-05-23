@@ -178,18 +178,23 @@ export default function Login() {
                   Create account
                 </Link>
               </p>
-              
-              <div className="mt-8 pt-6 border-t border-slate-100 flex justify-center">
-                <button 
-                  type="button" 
-                  onClick={() => setShowAdminModal(true)}
-                  className="text-xs font-semibold px-4 py-2 rounded-lg transition-all"
-                  style={{ color: 'var(--text-light)', background: 'var(--bg-card)' }}
-                >
-                  Admin Login
-                </button>
-              </div>
             </div>
+
+            {/* Admin Login Box (Separate Box) */}
+            <div 
+              className="mt-4 p-4 rounded-2xl animate-slide-up flex items-center justify-center text-center cursor-pointer transition-all hover:scale-[1.02]"
+              style={{ background: '#ffffff', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
+              onClick={() => setShowAdminModal(true)}
+            >
+              <button 
+                type="button"
+                className="font-semibold"
+                style={{ color: 'var(--text-light)', fontSize: '15px' }}
+              >
+                Admin Login
+              </button>
+            </div>
+            
           </div>
         </div>
       </div>
