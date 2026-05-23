@@ -55,19 +55,11 @@ def run_verification(
     hospital_shipment_id: Optional[str],
     supplier_dispatched: Optional[int] = None,
 ) -> VerificationResult:
-    if supplier is None or hospital is None:
-        missing = []
-        if supplier is None:
-            missing.append("supplier")
-        if hospital is None:
-            missing.append("hospital")
+    if supplier is None:
         return VerificationResult(
             status="PENDING",
             risk_score=0,
-            explanation=(
-                f"Waiting for independent submissions from: {', '.join(missing)}. "
-                "Verification requires all three parties."
-            ),
+            explanation="Waiting for independent submissions from: supplier.",
             hospital_shipment_id=hospital_shipment_id,
         )
 
@@ -99,32 +91,33 @@ def run_verification(
         risk += 10
 
     # Supplier vs hospital quantity
-    hos_qty = hospital.quantity or 0
-    sup_expected_for_hospital = supplier_dispatched if supplier_dispatched is not None else sup_qty
-    hos_dev = _pct_deviation(sup_expected_for_hospital, hos_qty)
-    if hos_dev > QUANTITY_DEVIATION_THRESHOLD:
-        rules.append("QUANTITY_DEVIATION_SUPPLIER_HOSPITAL")
-        mismatches.append({
-            "field": "quantity",
-            "supplier": sup_expected_for_hospital,
-            "hospital": hos_qty,
-            "deviation_pct": round(hos_dev * 100, 1),
-        })
-        risk += 30
-    elif hos_dev > 0.0:
-        rules.append("LOW_QUANTITY_DEVIATION_SUPPLIER_HOSPITAL")
-        mismatches.append({
-            "field": "quantity",
-            "supplier": sup_expected_for_hospital,
-            "hospital": hos_qty,
-            "deviation_pct": round(hos_dev * 100, 1),
-        })
-        risk += 10
+    if hospital is not None:
+        hos_qty = hospital.quantity or 0
+        sup_expected_for_hospital = supplier_dispatched if supplier_dispatched is not None else sup_qty
+        hos_dev = _pct_deviation(sup_expected_for_hospital, hos_qty)
+        if hos_dev > QUANTITY_DEVIATION_THRESHOLD:
+            rules.append("QUANTITY_DEVIATION_SUPPLIER_HOSPITAL")
+            mismatches.append({
+                "field": "quantity",
+                "supplier": sup_expected_for_hospital,
+                "hospital": hos_qty,
+                "deviation_pct": round(hos_dev * 100, 1),
+            })
+            risk += 30
+        elif hos_dev > 0.0:
+            rules.append("LOW_QUANTITY_DEVIATION_SUPPLIER_HOSPITAL")
+            mismatches.append({
+                "field": "quantity",
+                "supplier": sup_expected_for_hospital,
+                "hospital": hos_qty,
+                "deviation_pct": round(hos_dev * 100, 1),
+            })
+            risk += 10
 
     # Expiry chain
     mfg_exp = manufacturer.expiry
     sup_exp = supplier.expiry
-    hos_exp = hospital.expiry
+    hos_exp = hospital.expiry if hospital else None
     if mfg_exp and sup_exp and not _same_expiry(mfg_exp, sup_exp):
         rules.append("EXPIRY_MISMATCH_MFG_SUPPLIER")
         mismatches.append({
@@ -145,7 +138,7 @@ def run_verification(
     # Temperature declarations
     mfg_temp = manufacturer.temp
     sup_temp = supplier.temp
-    hos_temp = hospital.temp
+    hos_temp = hospital.temp if hospital else None
     if mfg_temp is not None and sup_temp is not None:
         diff = abs(mfg_temp - sup_temp)
         if diff > TEMP_TOLERANCE_CELSIUS:
@@ -178,11 +171,18 @@ def run_verification(
         explanation = rule_explanation
 
     else:
-        explanation = (
-            f"All three parties aligned within thresholds. "
-            f"Manufacturer {mfg_qty} units -> Supplier {sup_qty} -> Hospital {hos_qty}. "
-            f"Risk score {risk:.0f}/100 (safe)."
-        )
+        if hospital is not None:
+            explanation = (
+                f"All three parties aligned within thresholds. "
+                f"Manufacturer {mfg_qty} units -> Supplier {sup_qty} -> Hospital {hos_qty}. "
+                f"Risk score {risk:.0f}/100 (safe)."
+            )
+        else:
+            explanation = (
+                f"Two parties aligned within thresholds. "
+                f"Manufacturer {mfg_qty} units -> Supplier {sup_qty}. "
+                f"Risk score {risk:.0f}/100 (safe)."
+            )
 
     return VerificationResult(
         status=status,
@@ -197,7 +197,7 @@ def run_verification(
 def _build_flagged_explanation(
     manufacturer: PartyReport,
     supplier: PartyReport,
-    hospital: PartyReport,
+    hospital: Optional[PartyReport],
     mismatches: List[dict],
     risk: float,
 ) -> str:
@@ -217,7 +217,8 @@ def _build_flagged_explanation(
     else:
         lines.append(f"Manufacturer qty: {manufacturer.quantity} units")
         lines.append(f"Supplier qty:     {supplier.quantity} units")
-        lines.append(f"Hospital qty:     {hospital.quantity} units")
+        if hospital:
+            lines.append(f"Hospital qty:     {hospital.quantity} units")
     for m in mismatches:
         if m.get("field") == "quantity" and "deviation_pct" in m:
             lines.append(

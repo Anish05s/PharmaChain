@@ -134,17 +134,12 @@ def trigger_verification_and_blockchain(
 
     mfr, sup, hos = _load_party_reports(db, shipment_id, batch)
 
-    # Need at least supplier + hospital to cross-match (manufacturer data always available from batch)
-    if sup is None or hos is None:
-        missing = []
-        if sup is None:
-            missing.append("supplier")
-        if hos is None:
-            missing.append("hospital")
+    # Need at least supplier to cross-match (manufacturer data always available from batch)
+    if sup is None:
         return {
             "status": "PENDING",
             "risk_score": 0,
-            "explanation": f"Waiting for: {', '.join(missing)}",
+            "explanation": "Waiting for: supplier",
             "ai_flag_id": None,
         }
 
