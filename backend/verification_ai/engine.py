@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 QUANTITY_DEVIATION_THRESHOLD = 0.15
 TEMP_TOLERANCE_CELSIUS = 5.0
-FLAG_RISK_THRESHOLD = 10
+FLAG_RISK_THRESHOLD = 30
 
 
 @dataclass

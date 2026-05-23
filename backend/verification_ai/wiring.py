@@ -199,27 +199,31 @@ def trigger_verification_and_blockchain(
         shipment_id, result.status, result.risk_score,
     )
 
-    # Blockchain actions
-    bc_svc = get_blockchain_service()
-    
-    # Always record handoff on-chain so the tx hash is saved to the DB
-    background_tasks.add_task(
-        bg_record_handoff_and_store,
-        shipment_id,
-        result.status,
-        result.risk_score,
-        SessionLocal,
-        Shipment,
-        shipment_id,
-        "blockchain_hash",
-    )
-    logger.info("Queued blockchain handoff record for shipment %s", shipment_id)
-
+    # Always record handoff on-chain first.
+    # If FLAGGED, flag_shipment must come AFTER record_handoff completes on-chain
+    # to avoid the "Handoff not found" revert. We use a single sequential task.
     if result.status == "FLAGGED":
         background_tasks.add_task(
-            bc_svc.flag_shipment, shipment_id, result.explanation[:200]
+            _record_then_flag,
+            shipment_id=shipment_id,
+            status=result.status,
+            risk_score=result.risk_score,
+            flag_reason=result.explanation[:200],
+            db_session_factory=SessionLocal,
         )
-        logger.info("Queued blockchain flag for shipment %s", shipment_id)
+        logger.info("Queued sequential record+flag blockchain tasks for shipment %s", shipment_id)
+    else:
+        background_tasks.add_task(
+            bg_record_handoff_and_store,
+            shipment_id,
+            result.status,
+            result.risk_score,
+            SessionLocal,
+            Shipment,
+            shipment_id,
+            "blockchain_hash",
+        )
+        logger.info("Queued blockchain handoff record for shipment %s", shipment_id)
 
     return {
         "status": result.status,
@@ -268,3 +272,49 @@ def _update_explanation_with_llm(
             
     except Exception as exc:
         logger.error("[wiring] LLM background update failed: %s", exc)
+
+
+def _record_then_flag(
+    shipment_id: str,
+    status: str,
+    risk_score: float,
+    flag_reason: str,
+    db_session_factory,
+) -> None:
+    """
+    Sequential BackgroundTask for FLAGGED shipments.
+    
+    Order matters on-chain:
+      1. recordHandoff() — creates the record, waits for confirmation
+      2. flagShipment()  — updates the record's status/reason
+    
+    Running them as separate background tasks caused a race condition where
+    flagShipment() executed before recordHandoff() was mined, causing the
+    'Handoff not found' revert on Sepolia.
+    """
+    from blockchain_service.service import get_blockchain_service, _make_data_hash, _mock_tx_hash
+
+    svc = get_blockchain_service()
+
+    # Step 1: Record handoff (blocks until mined or times out in real mode)
+    tx_hash = svc.record_handoff(shipment_id, status, risk_score)
+    logger.info("[blockchain] recordHandoff tx for %s: %s", shipment_id, tx_hash)
+
+    # Step 2: Write tx hash to DB
+    if tx_hash:
+        db = db_session_factory()
+        try:
+            obj = db.query(Shipment).filter(Shipment.id == shipment_id).first()
+            if obj:
+                obj.blockchain_hash = tx_hash
+                db.commit()
+        except Exception as exc:
+            logger.error("[blockchain] Failed to write blockchain_hash: %s", exc)
+            db.rollback()
+        finally:
+            db.close()
+
+    # Step 3: Now that the handoff is confirmed on-chain, flag it
+    # (In mock mode this is a no-op effectively, but still safe to call)
+    flag_tx = svc.flag_shipment(shipment_id, flag_reason)
+    logger.info("[blockchain] flagShipment tx for %s: %s", shipment_id, flag_tx)
