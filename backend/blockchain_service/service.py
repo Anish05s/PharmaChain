@@ -171,22 +171,64 @@ class BlockchainService:
 
         try:
             nonce = self._w3.eth.get_transaction_count(self._account.address)
+            
+            # Build transaction with EIP-1559 gas (type 0x2)
             tx = self._contract.functions.recordHandoff(
                 shipment_id, data_hash, status, risk_int
             ).build_transaction({
-                "from":     self._account.address,
-                "nonce":    nonce,
-                "gas":      200_000,
-                "gasPrice": self._w3.eth.gas_price,
+                "from":                 self._account.address,
+                "nonce":                nonce,
+                "gas":                  200_000,
+                "maxFeePerGas":         self._w3.eth.gas_price * 2,  # 2x current base fee
+                "maxPriorityFeePerGas": self._w3.to_wei("2", "gwei"),  # Miner tip
+                "type":                 "0x2",  # EIP-1559 transaction
             })
+            
+            # Sign and send
             signed = self._account.sign_transaction(tx)
             tx_hash_bytes = self._w3.eth.send_raw_transaction(signed.raw_transaction)
+            
+            # Wait for confirmation (up to 120 seconds)
+            # BackgroundTask context makes blocking acceptable
+            try:
+                receipt = self._w3.eth.wait_for_transaction_receipt(
+                    tx_hash_bytes, timeout=120
+                )
+                
+                # Check if transaction actually succeeded on-chain
+                if receipt.status == 0:
+                    logger.error(
+                        "[SEPOLIA] TX REVERTED for shipment %s. "
+                        "Check: 1) wallet matches contract owner 2) sufficient gas 3) contract state",
+                        shipment_id
+                    )
+                    return _mock_tx_hash(shipment_id, data_hash)  # fallback
+                    
+            except Exception as timeout_exc:
+                logger.warning(
+                    "[SEPOLIA] TX not confirmed in 120s for shipment %s: %s",
+                    shipment_id, timeout_exc
+                )
+                return _mock_tx_hash(shipment_id, data_hash)  # fallback
+            
+            # Success
             tx_hash = tx_hash_bytes.hex()
-            logger.info("[SEPOLIA] Handoff tx sent: %s → %s", shipment_id, tx_hash)
+            logger.info("[SEPOLIA] TX recorded: %s", tx_hash)
             return tx_hash
+            
+        except ValueError as ve:
+            # Likely contract/address mismatch or encoding error
+            logger.error(
+                "[BLOCKCHAIN] ValueError (likely contract/encoding): %s | Shipment: %s",
+                ve, shipment_id
+            )
+            return _mock_tx_hash(shipment_id, data_hash)
         except Exception as exc:
-            logger.error("Blockchain write failed for %s: %s", shipment_id, exc)
-            # Fallback: return mock hash so DB isn't left NULL
+            logger.error(
+                "[BLOCKCHAIN WRITE FAILED] Unexpected error: %s | Shipment: %s | "
+                "Next steps: Check wallet owns contract, check ETH balance, verify contract ABI",
+                exc, shipment_id
+            )
             return _mock_tx_hash(shipment_id, data_hash)
 
     def flag_shipment(self, shipment_id: str, reason: str) -> Optional[str]:

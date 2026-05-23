@@ -182,6 +182,18 @@ def trigger_verification_and_blockchain(
     db.add(ai_flag)
     db.flush()
 
+    if result.status == "FLAGGED":
+        ai_flag_id = ai_flag.id  # capture before session closes
+        background_tasks.add_task(
+            _update_explanation_with_llm,
+            ai_flag_id=ai_flag_id,
+            manufacturer=mfr,
+            supplier=sup,
+            hospital=hos,
+            result=result,
+            db_session_factory=SessionLocal,
+        )
+
     logger.info(
         "AIFlag written for shipment %s: status=%s risk=%.0f",
         shipment_id, result.status, result.risk_score,
@@ -215,3 +227,44 @@ def trigger_verification_and_blockchain(
         "explanation": result.explanation,
         "ai_flag_id": ai_flag.id,
     }
+
+def _update_explanation_with_llm(
+    ai_flag_id: str,
+    manufacturer,
+    supplier,
+    hospital,
+    result,
+    db_session_factory,
+):
+    """
+    BackgroundTask: calls Gemini and patches the explanation in DB.
+    Runs asynchronously, never blocks the route.
+    """
+    try:
+        from verification_ai.llm_investigator import investigate_flag
+        
+        llm_text = investigate_flag(
+            batch_name=getattr(manufacturer, "batch_name", "Unknown"),
+            batch_number=getattr(manufacturer, "batch_number", "Unknown"),
+            from_entity=manufacturer.party if manufacturer else "Unknown",
+            to_entity=hospital.party if hospital else "Unknown",
+            risk_score=result.risk_score,
+            triggered_rules=result.triggered_rules,
+            mismatch_details=result.mismatches,
+            rule_explanation=result.explanation,
+        )
+        
+        if not llm_text:
+            return
+        
+        db = db_session_factory()
+        try:
+            flag = db.query(AIFlag).filter(AIFlag.id == ai_flag_id).first()
+            if flag:
+                flag.explanation = llm_text
+                db.commit()
+        finally:
+            db.close()
+            
+    except Exception as exc:
+        logger.error("[wiring] LLM background update failed: %s", exc)

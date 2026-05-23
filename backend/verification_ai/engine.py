@@ -175,25 +175,7 @@ def run_verification(
     if status == "FLAGGED":
         rule_explanation = _build_flagged_explanation(manufacturer, supplier, hospital, mismatches, risk)
 
-        # ── Layer 2: LLM Investigation ─────────────────────────
-        llm_explanation = ""
-        try:
-            from verification_ai.llm_investigator import investigate_flag  # noqa: PLC0415
-
-            llm_explanation = investigate_flag(
-                batch_name=getattr(manufacturer, "batch_name", "Unknown"),
-                batch_number=getattr(manufacturer, "batch_number", "Unknown"),
-                from_entity=getattr(manufacturer, "party", "Manufacturer"),
-                to_entity=getattr(hospital, "party", "Hospital"),
-                risk_score=risk,
-                triggered_rules=rules,
-                mismatch_details=mismatches,
-                rule_explanation=rule_explanation,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("[Engine] LLM investigator skipped: %s", exc)
-
-        explanation = llm_explanation if llm_explanation else rule_explanation
+        explanation = rule_explanation
 
     else:
         explanation = (

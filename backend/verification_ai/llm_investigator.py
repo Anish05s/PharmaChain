@@ -38,7 +38,7 @@ def _get_model():
         import google.generativeai as genai  # noqa: WPS433
 
         genai.configure(api_key=api_key)
-        _model = genai.GenerativeModel("gemini-2.5-flash")
+        _model = genai.GenerativeModel("gemini-1.5-flash")
         logger.info("[LLM Investigator] Gemini Flash model loaded ✓")
         return _model
     except Exception as exc:  # noqa: BLE001
