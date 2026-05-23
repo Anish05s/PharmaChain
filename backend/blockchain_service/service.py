@@ -178,7 +178,7 @@ class BlockchainService:
             ).build_transaction({
                 "from":                 self._account.address,
                 "nonce":                nonce,
-                "gas":                  200_000,
+                "gas":                  800_000,
                 "maxFeePerGas":         self._w3.eth.gas_price * 2,  # 2x current base fee
                 "maxPriorityFeePerGas": self._w3.to_wei("2", "gwei"),  # Miner tip
                 "type":                 "0x2",  # EIP-1559 transaction
@@ -246,7 +246,7 @@ class BlockchainService:
             ).build_transaction({
                 "from":     self._account.address,
                 "nonce":    nonce,
-                "gas":      100_000,
+                "gas":      500_000,
                 "gasPrice": self._w3.eth.gas_price,
             })
             signed = self._account.sign_transaction(tx)
