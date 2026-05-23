@@ -72,3 +72,13 @@ def require_consumer(user: User = Depends(get_current_user)) -> User:
             detail="User is not linked to a hospital/NGO (entity_id missing)",
         )
     return user
+
+
+def require_admin(user: User = Depends(get_current_user)) -> User:
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access only",
+        )
+    return user
+

@@ -27,6 +27,7 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+    otp: Optional[str] = None
 
 class TokenResponse(BaseModel):
     access_token: str

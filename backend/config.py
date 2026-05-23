@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     MAPBOX_TOKEN: str = ""
     GEMINI_API_KEY: str = ""
 
+    # ── Admin Passwords ───────────────────────────────────────────────────────
+    ADMIN_MASTER_PASSWORD: str = "AdminMaster2026!"
+    ADMIN_MANAGER_PASSWORD: str = "AdminManager2026!"
+    ADMIN_DEV_PASSWORD: str = "AdminDev2026!"
+
     class Config:
         env_file = ".env"
 

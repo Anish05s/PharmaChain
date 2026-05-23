@@ -12,11 +12,19 @@ export default function Login() {
   const { user, saveSession } = useAuth()
   const navigate = useNavigate()
 
+  // Admin Modal States
+  const [showAdminModal, setShowAdminModal] = useState(false)
+  const [showOtpModal, setShowOtpModal] = useState(false)
+  const [adminEmail, setAdminEmail] = useState('')
+  const [adminPassword, setAdminPassword] = useState('')
+  const [otp, setOtp] = useState('')
+
   useEffect(() => {
     if (!user) return
     if (user.role === 'manufacturer') navigate('/manufacturer', { replace: true })
     else if (user.role === 'supplier') navigate('/supplier', { replace: true })
     else if (user.role === 'consumer') navigate('/hospital', { replace: true })
+    else if (user.role === 'admin') navigate('/admin', { replace: true })
   }, [user, navigate])
 
   async function handleSubmit(e) {
@@ -29,9 +37,26 @@ export default function Login() {
       if (data.role === 'manufacturer') navigate('/manufacturer')
       else if (data.role === 'supplier') navigate('/supplier')
       else if (data.role === 'consumer') navigate('/hospital')
+      else if (data.role === 'admin') navigate('/admin')
       else navigate('/')
     } catch {
       setError('Invalid email or password. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleAdminSubmit(e) {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      // login() needs to accept OTP now. We'll update api/auth.js next.
+      const data = await login(adminEmail, adminPassword, otp)
+      saveSession(data)
+      navigate('/admin')
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Admin login failed.')
     } finally {
       setLoading(false)
     }
@@ -147,16 +172,76 @@ export default function Login() {
                 </button>
               </form>
 
-              <p className="text-center text-sm mt-6" style={{ color: 'var(--text-light)' }}>
+                <p className="text-center text-sm mt-6" style={{ color: 'var(--text-light)' }}>
                 New here?{' '}
                 <Link to="/signup" className="font-semibold transition-colors" style={{ color: 'var(--cyan)' }}>
                   Create account
                 </Link>
               </p>
+              
+              <div className="mt-8 pt-6 border-t border-slate-100 flex justify-center">
+                <button 
+                  type="button" 
+                  onClick={() => setShowAdminModal(true)}
+                  className="text-xs font-semibold px-4 py-2 rounded-lg transition-all"
+                  style={{ color: 'var(--text-light)', background: 'var(--bg-card)' }}
+                >
+                  Admin Login
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Admin Login Modal */}
+      {showAdminModal && !showOtpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-sm p-6 rounded-2xl animate-slide-up" style={{ background: '#ffffff', boxShadow: 'var(--shadow-xl)' }}>
+            <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--text-base)' }}>Admin Access</h3>
+            <form onSubmit={(e) => { e.preventDefault(); setShowOtpModal(true); }}>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Admin Email</label>
+                  <input type="email" required className="w-full px-4 py-3 text-sm" value={adminEmail} onChange={e => setAdminEmail(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase mb-1.5 block">Password</label>
+                  <PasswordInput value={adminPassword} onChange={e => setAdminPassword(e.target.value)} />
+                </div>
+                <div className="flex gap-3 mt-6">
+                  <button type="button" onClick={() => setShowAdminModal(false)} className="flex-1 py-2.5 rounded-xl font-semibold text-sm border" style={{ color: 'var(--text-muted)' }}>Cancel</button>
+                  <button type="submit" className="flex-1 py-2.5 rounded-xl font-semibold text-sm text-white" style={{ background: 'var(--cyan)' }}>Continue</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Admin OTP Modal */}
+      {showOtpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-sm p-6 rounded-2xl animate-slide-up" style={{ background: '#ffffff', boxShadow: 'var(--shadow-xl)' }}>
+            <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--text-base)' }}>Enter OTP</h3>
+            <p className="text-xs text-slate-500 mb-6">A one-time passcode is required for admin access. (Use 123456)</p>
+            {error && <p className="text-red-500 text-xs mb-3">{error}</p>}
+            <form onSubmit={handleAdminSubmit}>
+              <div className="space-y-4">
+                <div>
+                  <input type="text" required maxLength={6} placeholder="123456" className="w-full px-4 py-3 text-center text-xl tracking-widest font-mono" value={otp} onChange={e => setOtp(e.target.value)} />
+                </div>
+                <div className="flex gap-3 mt-6">
+                  <button type="button" onClick={() => setShowOtpModal(false)} className="flex-1 py-2.5 rounded-xl font-semibold text-sm border" style={{ color: 'var(--text-muted)' }}>Back</button>
+                  <button type="submit" disabled={loading} className="flex-1 py-2.5 rounded-xl font-semibold text-sm text-white" style={{ background: 'var(--cyan)' }}>
+                    {loading ? 'Verifying...' : 'Sign In'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Footer block matching the Resilinc style */}
       <footer className="text-white py-16 px-8 lg:px-24 w-full" style={{ background: '#0b1d3a' }}>

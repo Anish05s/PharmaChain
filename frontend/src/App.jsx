@@ -11,6 +11,7 @@ import HospitalDashboard from './pages/HospitalDashboard'
 import ApprovalLogPage from './pages/ApprovalLogPage'
 import PublicShipmentPage from './pages/PublicShipmentPage'
 import CrisisDashboard from './pages/CrisisDashboard'
+import AdminDashboard from './pages/AdminDashboard'
 
 function HomeRedirect() {
   const { user } = useAuth()
@@ -18,6 +19,7 @@ function HomeRedirect() {
   if (user.role === 'manufacturer') return <Navigate to="/manufacturer" replace />
   if (user.role === 'supplier') return <Navigate to="/supplier" replace />
   if (user.role === 'consumer') return <Navigate to="/hospital" replace />
+  if (user.role === 'admin') return <Navigate to="/admin" replace />
   return <Navigate to="/login" replace />
 }
 
@@ -101,6 +103,16 @@ export default function App() {
             element={
               <ProtectedRoute role="consumer">
                 <HospitalDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Admin routes */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute role="admin">
+                <AdminDashboard />
               </ProtectedRoute>
             }
           />

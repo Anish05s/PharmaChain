@@ -23,6 +23,9 @@ class SubRole(str, enum.Enum):
     manufacturer_admin = "manufacturer_admin"
     supplier_manager = "supplier_manager"
     hospital_officer = "hospital_officer"
+    admin_master = "admin_master"
+    admin_manager = "admin_manager"
+    admin_dev = "admin_dev"
 
 class ShipmentStatus(str, enum.Enum):
     pending = "pending"

@@ -56,6 +56,8 @@ ENTITIES = {
     ),
 }
 
+from config import settings
+
 ACCOUNTS = [
     {
         "email": "manufacturer@pharmachain.com",
@@ -80,6 +82,30 @@ ACCOUNTS = [
         "role": "consumer",
         "sub_role": "hospital_officer",
         "entity_id": "con-001",
+    },
+    {
+        "email": "admin_master@pharmachain.com",
+        "password": settings.ADMIN_MASTER_PASSWORD,
+        "full_name": "God Mode Admin",
+        "role": "admin",
+        "sub_role": "admin_master",
+        "entity_id": None,
+    },
+    {
+        "email": "admin_manager@pharmachain.com",
+        "password": settings.ADMIN_MANAGER_PASSWORD,
+        "full_name": "Compliance Admin",
+        "role": "admin",
+        "sub_role": "admin_manager",
+        "entity_id": None,
+    },
+    {
+        "email": "admin_dev@pharmachain.com",
+        "password": settings.ADMIN_DEV_PASSWORD,
+        "full_name": "Technical Admin",
+        "role": "admin",
+        "sub_role": "admin_dev",
+        "entity_id": None,
     },
 ]
 

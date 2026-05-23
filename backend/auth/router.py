@@ -119,6 +119,10 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     if not user or not verify_password(data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    if user.role == "admin":
+        if data.otp != "123456":
+            raise HTTPException(status_code=401, detail="Invalid OTP code")
+
     token = create_access_token({
         "sub": user.id,
         "role": user.role,

@@ -100,6 +100,8 @@ app.add_middleware(
     allow_credentials=True,
 )
 
+from admin.router import router as admin_router
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 app.include_router(auth_router)
 app.include_router(manufacturer_router)
@@ -110,6 +112,7 @@ app.include_router(approval_logs_router)
 app.include_router(shared_router)
 app.include_router(notifications_router)
 app.include_router(crisis_router)
+app.include_router(admin_router)
 
 
 @app.get("/health")
