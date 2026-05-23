@@ -4,8 +4,7 @@ from models import Shipment, MedicineBatch, HandoffRecord
 
 
 def _shipment_units(shipment: Shipment, batch: MedicineBatch, db: Session, stage: str) -> int:
-    if shipment.quantity_dispatched is not None:
-        return shipment.quantity_dispatched
+    # First, always trust the receiving party's reported quantity for their own inventory
     handoff = (
         db.query(HandoffRecord)
         .filter(
@@ -16,6 +15,12 @@ def _shipment_units(shipment: Shipment, batch: MedicineBatch, db: Session, stage
     )
     if handoff and handoff.quantity_reported is not None:
         return handoff.quantity_reported
+
+    # Fallback to what was dispatched
+    if shipment.quantity_dispatched is not None:
+        return shipment.quantity_dispatched
+        
+    # Final fallback to batch size
     return batch.quantity
 
 
