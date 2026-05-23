@@ -150,7 +150,7 @@ python -m pytest tests/ -v
 
 ---
 
-## 📊 Additions Classification (updateprompt.md)
+## 📊 Additions Classification
 
 ### 🟢 NOW — High Impact, Low Effort (Implemented)
 
