@@ -152,15 +152,23 @@ class RestockRequest(Base):
     created_at = Column(DateTime, default=now)
 
 class DisruptionEvent(Base):
+    """
+    Addition 7 — Disruption Events Table
+    Stores supply chain disruptions detected by crisis_ai module.
+    Used for route rerouting recommendations and emergency restock triggers.
+    """
     __tablename__ = "disruption_events"
     id = Column(String, primary_key=True, default=gen_uuid)
-    event_type = Column(String)
-    region = Column(String)
-    severity = Column(String)
-    source = Column(String)
+    event_type = Column(String)           # e.g. "flood", "strike", "pandemic"
+    region = Column(String)               # e.g. "Maharashtra, India"
+    severity = Column(String)            # "low", "medium", "high", "critical"
+    description = Column(Text)           # Human-readable disruption detail
+    affected_routes = Column(Text)       # JSON array of affected route IDs/names
+    recommended_medicines = Column(Text) # JSON array of critical medicines to reroute
+    source = Column(String, default="news_api")  # "news_api", "manual", "sensor"
+    resolved = Column(Boolean, default=False)
     detected_at = Column(DateTime, default=now)
     resolved_at = Column(DateTime, nullable=True)
-    affected_routes = Column(Text)
 
 class ApprovalLog(Base):
     __tablename__ = "approval_logs"

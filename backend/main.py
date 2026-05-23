@@ -37,6 +37,17 @@ async def lifespan(app: FastAPI):
     """FastAPI lifespan — runs startup then yields, then runs shutdown."""
     global _scheduler
 
+    # ── Addition 5 — CORS production safety guard ─────────────────────────────
+    # Prevents wildcard CORS from accidentally being deployed to production.
+    # Set ENVIRONMENT=production and ALLOWED_ORIGINS=<your-frontend-url> in .env
+    if settings.ENVIRONMENT == "production" and settings.ALLOWED_ORIGINS == "*":
+        raise RuntimeError(
+            "CRITICAL SECURITY GUARD: ALLOWED_ORIGINS must not be '*' in production. "
+            "Set it to your exact frontend domain in Railway environment variables, e.g. "
+            "ALLOWED_ORIGINS=https://pharmachain-mauve.vercel.app"
+        )
+    # ─────────────────────────────────────────────────────────────────────────
+
     # 1. Blockchain service (mock or real Sepolia)
     init_blockchain_service(
         rpc_url=settings.ETHEREUM_RPC_URL,
