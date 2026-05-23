@@ -162,17 +162,23 @@ def trigger_verification_and_blockchain(
 
     # Find supplier_dispatched from outbound shipment if available
     supplier_dispatched: Optional[int] = None
-    # Look for an outbound shipment from supplier to hospital for this batch
-    outbound = (
-        db.query(Shipment)
-        .filter(
-            Shipment.batch_id == shipment.batch_id,
-            Shipment.from_entity_id == shipment.to_entity_id,  # supplier is the from
+    
+    if hospital_shipment_id is not None and hospital_shipment_id == shipment_id:
+        # The current shipment IS the outbound shipment (supplier -> hospital)
+        supplier_dispatched = shipment.quantity_dispatched
+    else:
+        # The current shipment is manufacturer -> supplier
+        # Look for an outbound shipment from supplier to hospital for this batch
+        outbound = (
+            db.query(Shipment)
+            .filter(
+                Shipment.batch_id == shipment.batch_id,
+                Shipment.from_entity_id == shipment.to_entity_id,  # supplier is the from
+            )
+            .first()
         )
-        .first()
-    )
-    if outbound and outbound.quantity_dispatched:
-        supplier_dispatched = outbound.quantity_dispatched
+        if outbound and outbound.quantity_dispatched:
+            supplier_dispatched = outbound.quantity_dispatched
 
     result = run_verification(
         manufacturer=mfr,
