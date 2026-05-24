@@ -42,7 +42,7 @@ class Settings(BaseSettings):
         """Parse ALLOWED_ORIGINS into a list for CORS middleware."""
         if self.ALLOWED_ORIGINS == "*":
             return ["*"]
-        return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+        return [o.strip().rstrip("/") for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
 
 
 settings = Settings()
